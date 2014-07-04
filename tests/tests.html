@@ -1,0 +1,69 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>can-form tests</title>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
+    <script type='text/javascript' src='../requirejsconfig.js'></script>
+    <script type="text/stache" id="form">
+      <form-for map="{user}">
+        Foo bar {{ username }}
+        <input type="text" can-value="username">
+        {{#errors username}}{{/errors}}
+        <form-for map="{address}">
+          <input type="text" can-value="street">
+        </form-for>
+        {{#each socialNetworks}}
+          <hr>
+          <form-for map="{this}" path="socialNetworks.{{@index}}">
+            <input can-value="name">
+            <input can-value="username">
+            {{#errors 'username'}}
+              <ul>
+                {{#this}}
+                  <li>{{ . }}</li>
+                {{/this}}
+              </ul>
+            {{/errors}}
+            {{#inMainForm}}
+              <button type="submit">Submit</button>
+            {{/inMainForm}}
+          </form-for>
+        {{/each}}
+        <br>
+        <button type="submit">Bar</button>
+      </form-for>
+    </script>
+    <script type='text/javascript'>
+      requirejs.config({
+        baseUrl : '../'
+      })
+      requirejs(['can/view/stache', 'can/map', 'can-form'], function(stache, Map, Form){
+         
+          var view = can.view('form')
+          var userModel = Map.extend({}, {})
+
+          window.user = new userModel({
+            username: 'mama ti je jama',
+            address : {
+              street : 'Prijedorska'
+            },
+            socialNetworks : [{
+              name : 'twitter',
+              username : 'mihaelkonjevic'
+            }, {
+              name : 'github',
+              username : 'retro'
+            }]
+          })
+
+
+          $('#content').html(view({
+            user : user
+          }))
+      })
+    </script>
+  </body>
+</html>
