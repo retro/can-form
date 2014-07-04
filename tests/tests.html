@@ -9,6 +9,9 @@
     <script type='text/javascript' src='../requirejsconfig.js'></script>
     <script type="text/stache" id="form">
       <form-for map="{user}">
+        {{#errors}}
+          <h1>there are some problems with the form</h1>
+        {{/errors}}
         Foo bar {{ username }}
         <input type="text" can-value="username">
         {{#errors username}}{{/errors}}

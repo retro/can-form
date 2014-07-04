@@ -8,12 +8,14 @@ define([
 'lodash/objects/isArray',
 'lodash/objects/isFunction',
 'lodash/objects/isEmpty',
+'lodash/objects/keys',
 'lodash/collections/map',
 'lodash/collections/forEach',
+'lodash/collections/contains',
 'lodash/arrays/compact',
 'can/construct/super',
 'can/construct/proxy'
-], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isFunction, _isEmpty, _map, _each, _compact){
+], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isFunction, _isEmpty, _keys, _map, _each, _contains, _compact){
 
 
 	var wrapSubtemplateInForm = function(subtemplate){
@@ -82,12 +84,14 @@ define([
 				parentPath = scope.attr('__path'),
 				currentPath = parentPath ? [parentPath, path].join('.') : path,
 				opts = {},
-				validations = [];
+				validations = [],
+				dirtyAttrs = scope.attr('__dirtyAttrs') || [];
 
 			if(!scope.attr('__form')){
 				// We're in the top form context
 				opts.__form = true;
 				opts.__errors = can.compute();
+				opts.__dirtyAttrs = dirtyAttrs;
 				opts.__addValidation = function(rulesFn){
 					validations.push(rulesFn);
 				}
@@ -107,57 +111,83 @@ define([
 				hookupOptions.scope = scope._parent.add(opts).add(context);
 			}
 
-			this._super.apply(this, arguments);
-
-			if(opts.__form){
-				this._control.__form      = opts.__form;
-				this._control.__errors    = opts.__errors;
-				this._control.validations = validations;
-			}
-
 			can.bind.call(el, "attributes", function (ev) {
-				var path;
+				var path, oldPath;
 				if(ev.attributeName === 'path' && opts.__path){
 					path = el.getAttribute('path');
 					path = parentPath ? [parentPath, path].join('.') : path;
-
+					oldPath = ev.oldValue;
 					opts.__path(path);
+
+					for(var i = 0; i < dirtyAttrs.length; i++){
+						if(dirtyAttrs[i].indexOf(oldPath) === 0){
+							dirtyAttrs[i] = dirtyAttrs[i].replace(oldPath, path);
+						}
+					}
+
 					ev.stopImmediatePropagation();
 				}
 			});
+
+			this._super.apply(this, arguments);
+
+			if(opts.__form){
+				this._control.__form       = opts.__form;
+				this._control.__errors     = opts.__errors;
+				this._control.__dirtyAttrs = opts.__dirtyAttrs;
+				this._control.validations  = validations;
+			}
 			
 		},
 		events : {
-			"{scope} change" : function(){
+			"{scope} change" : function(scope, ev, path, how){
 				if(this.__form){
+					if(how === 'set'){
+						if(!_contains(this.__dirtyAttrs, path)){
+							this.__dirtyAttrs.push(path);
+						}
+					}
 					clearTimeout(this.__validationTimeout);
 					this.__validationTimeout = setTimeout(this.proxy('validate'), 1);
 				}
 			},
 			"form submit" : function(el, ev){
-				var errors = this.validate();
+				this.__formWasSubmitted = true;
+				var errors = this.validate(true);
+				
 				if(_isEmpty(errors)){
 
-				} else {
-
 				}
+
 				ev.preventDefault();
 			},
-			validate : function(){
-				var allErrors = {};
+			validate : function(validateAll){
+				var allErrors = {},
+					self = this;
 
 				_each(this.validations, function(fn){
 					var errors = fn();
 					if(errors && !_isEmpty(errors)){
 						_each(errors, function(error, key){
-							if(allErrors[key]){
-								allErrors[key].push.apply(allErrors[key], error);
-							} else {
-								allErrors[key] = error;
+							if(validateAll || _contains(self.__dirtyAttrs, key)){
+								if(allErrors[key]){
+									allErrors[key].push.apply(allErrors[key], error);
+								} else {
+									allErrors[key] = error;
+								}
 							}
 						})
 					}
-				})
+				});
+
+				if(this.__formWasSubmitted){
+					_each(_keys(allErrors), function(path){
+						if(!_contains(self.__dirtyAttrs, path)){
+							self.__dirtyAttrs.push(path);
+						}
+					});
+					delete this.__formWasSubmitted;
+				}
 
 				this.__errors(allErrors);
 
@@ -185,7 +215,7 @@ define([
 					errors = errors[fullPath];
 				}
 
-				return errors ? opts.fn(opts.scope.add(errors)) : null;
+				return !_isEmpty(errors) ? opts.fn(opts.scope.add(errors)) : null;
 			}
 		}
 	})
