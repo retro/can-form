@@ -8,7 +8,7 @@
     <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
     <script type='text/javascript' src='../requirejsconfig.js'></script>
     <script type="text/stache" id="form">
-      <form-for map="{user}">
+      <form-for map="{user}" errors="{foo}">
         {{#errors}}
           <h1>there are some problems with the form</h1>
         {{/errors}}
@@ -48,19 +48,7 @@
           var view = can.view('form')
           var userModel = Map.extend({}, {})
 
-          FormComponent({
-            tag:'form-for',
-            template : stache('<content></content>'),
-            scope : {
-              arrrrr : function(){
-                console.log('Fooo')
-                return 'lol'
-              }
-            },
-            validate : {
-              'username' : [FormComponent.validationRules.presenceOf()]
-            }
-          })
+          window.foo = can.compute('mama ti je jama')
 
           window.user = new userModel({
             username: 'mama ti je jama',
@@ -78,7 +66,8 @@
 
 
           $('#content').html(view({
-            user : user
+            user : user,
+            foo : foo
           }))
       })
     </script>
