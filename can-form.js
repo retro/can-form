@@ -6,8 +6,8 @@ define([
 'lodash/objects/merge',
 'lodash/objects/transform',
 'lodash/objects/isArray',
-'lodash/objects/isFunction',
 'lodash/objects/isEmpty',
+'lodash/objects/isPlainObject',
 'lodash/objects/keys',
 'lodash/collections/map',
 'lodash/collections/forEach',
@@ -15,8 +15,15 @@ define([
 'lodash/arrays/compact',
 'can/construct/super',
 'can/construct/proxy'
-], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isFunction, _isEmpty, _keys, _map, _each, _contains, _compact){
+], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isEmpty, _isPlainObject, _keys, _map, _each, _contains, _compact){
 
+	var FormComponentError = function (message){
+		this.message = message;
+		this.stack = (new Error()).stack;
+	}
+
+	FormComponentError.prototype      = new Error; 
+	FormComponentError.prototype.name = 'FormComponentError'; 
 
 	var wrapSubtemplateInForm = function(subtemplate){
 		var wrapped = stache('<form>{{{subtemplate}}}</form>');
@@ -64,20 +71,9 @@ define([
 		}
 	}
 
+	var makeSetup = function(passedInScope){
 
-	Component({
-		tag:'form-for',
-		template : stache('<content></content>'),
-		validate : {
-			'username' : [Validator.rules.presenceOf()]
-		},
-		scope : function(attrs, parentScope, el){
-			parentScope.attr('__addValidation')(
-				makeValidator(attrs.map, this.validate, parentScope.attr('__path'))
-			);
-			return attrs.map;
-		},
-		setup : function(el, hookupOptions){
+		return function(el, hookupOptions){
 			var scope = hookupOptions.scope,
 				context = scope._context,
 				path = getPath(el.getAttribute('path') || el.getAttribute('map')),
@@ -85,7 +81,8 @@ define([
 				currentPath = parentPath ? [parentPath, path].join('.') : path,
 				opts = {},
 				validations = [],
-				dirtyAttrs = scope.attr('__dirtyAttrs') || [];
+				dirtyAttrs = scope.attr('__dirtyAttrs') || [],
+				mapConstructor, passedInScopeInstance;
 
 			if(!scope.attr('__form')){
 				// We're in the top form context
@@ -106,10 +103,23 @@ define([
 			}
 
 			if(!scope._parent){
-				hookupOptions.scope = (new can.view.Scope(opts)).add(context);
+				hookupOptions.scope = (new can.view.Scope(opts));
 			} else {
-				hookupOptions.scope = scope._parent.add(opts).add(context);
+				hookupOptions.scope = scope._parent.add(opts);
 			}
+
+
+			if(passedInScope){
+				if(_isPlainObject(passedInScope)){
+					mapConstructor = (this.Map || can.Map).extend({}, passedInScope);
+					passedInScopeInstance = new mapConstructor;
+				} else {
+					passedInScopeInstance = new passedInScope;
+				}
+				hookupOptions.scope = hookupOptions.scope.add(passedInScopeInstance);
+			}
+
+			hookupOptions.scope = hookupOptions.scope.add(context);
 
 			can.bind.call(el, "attributes", function (ev) {
 				var path, oldPath;
@@ -129,7 +139,7 @@ define([
 				}
 			});
 
-			this._super.apply(this, arguments);
+			Component.prototype.setup.apply(this, arguments);
 
 			if(opts.__form){
 				this._control.__form       = opts.__form;
@@ -138,6 +148,15 @@ define([
 				this._control.validations  = validations;
 			}
 			
+		}
+	}
+
+	var componentOpts = {
+		scope : function(attrs, parentScope, el){
+			parentScope.attr('__addValidation')(
+				makeValidator(attrs.map, this.validate, parentScope.attr('__path'))
+			);
+			return attrs.map;
 		},
 		events : {
 			"{scope} change" : function(scope, ev, path, how){
@@ -206,7 +225,7 @@ define([
 				}
 
 				path = opts.scope.attr('__path');
-				path = _isFunction(path) ? path() : path;
+				path = can.isFunction(path) ? path() : path;
 
 				errors   = opts.scope.attr('__errors')() || {};
 				fullPath = _compact([path, attr]).join('.');
@@ -218,6 +237,26 @@ define([
 				return !_isEmpty(errors) ? opts.fn(opts.scope.add(errors)) : null;
 			}
 		}
-	})
+	}
+
+	var FormComponent = function(opts){
+		var passedInScope = opts.scope;
+
+		delete opts.scope;
+
+		if(!opts.template){
+			throw new FormComponentError("You must provide the `template` option to the FormComponent")
+		}
+		if(!opts.tag){
+			throw new FormComponentError("You must provide the `tag` option to the FormComponent")
+		}
+
+		return Component.extend(_merge({setup : makeSetup(passedInScope)}, componentOpts, opts));
+	}
+
+	FormComponent.extend = FormComponent;
+	FormComponent.validationRules = Validator.rules;
+
+	return FormComponent;
 
 })

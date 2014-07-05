@@ -43,10 +43,24 @@
       requirejs.config({
         baseUrl : '../'
       })
-      requirejs(['can/view/stache', 'can/map', 'can-form'], function(stache, Map, Form){
+      requirejs(['can/view/stache', 'can/map', 'can-form'], function(stache, Map, FormComponent){
          
           var view = can.view('form')
           var userModel = Map.extend({}, {})
+
+          FormComponent({
+            tag:'form-for',
+            template : stache('<content></content>'),
+            scope : {
+              arrrrr : function(){
+                console.log('Fooo')
+                return 'lol'
+              }
+            },
+            validate : {
+              'username' : [FormComponent.validationRules.presenceOf()]
+            }
+          })
 
           window.user = new userModel({
             username: 'mama ti je jama',
