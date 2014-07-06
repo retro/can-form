@@ -8,7 +8,8 @@
     <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
     <script type='text/javascript' src='../requirejsconfig.js'></script>
     <script type="text/stache" id="form">
-      <form-for map="{user}" errors="{foo}">
+
+      <form-for map="{user}" errors="{foo}" state="{formState}">
         {{#errors}}
           <h1>there are some problems with the form</h1>
         {{/errors}}
@@ -48,7 +49,7 @@
           var view = can.view('form')
           var userModel = Map.extend({}, {})
 
-          window.foo = can.compute('mama ti je jama')
+          window.foo = can.compute()
 
           window.user = new userModel({
             username: 'mama ti je jama',
@@ -64,10 +65,16 @@
             }]
           })
 
+          window.formState = can.compute();
+
+          formState.bind('change', function(){
+            console.log(arguments)
+          })
 
           $('#content').html(view({
             user : user,
-            foo : foo
+            foo : foo,
+            formState : formState
           }))
       })
     </script>

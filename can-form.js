@@ -26,16 +26,28 @@ define([
 	FormComponentError.prototype      = new Error; 
 	FormComponentError.prototype.name = 'FormComponentError'; 
 
+	var templates = {
+		withForm : stache('<form>{{#__ctx}}{{{__subtemplate}}}{{/__ctx}}</form>'),
+		withoutForm : stache('{{#__ctx}}{{{__subtemplate}}}{{/__ctx}}')
+	};
 
 	// When we create the form template in the top context,
 	// we wrap it in the `form` element to get all the native
 	// form behavior for free.
-	var wrapSubtemplateInForm = function(subtemplate){
-		var wrapped = stache('<form>{{{subtemplate}}}</form>');
+	var wrapSubtemplateInFormScope = function(subtemplate, useForm){
+		var wrapped = useForm ? templates.withForm : templates.withoutForm;
+
 		return function(){
-			var args = can.makeArray(arguments);
-			return wrapped({
-				subtemplate : function(){ return subtemplate.apply(this, args); }
+			var args        = can.makeArray(arguments),
+				scope       = args[0],
+				tagsHelpers = args[1];
+			return wrapped({}, {
+				__ctx : function(opts){
+					return opts.fn(scope.add(scope.attr('map')));
+				},
+				__subtemplate : function(opts){
+					return subtemplate(opts.scope, tagsHelpers);
+				}
 			});
 		}
 	}
@@ -79,41 +91,97 @@ define([
 		}
 	}
 
-	// Function that handles all the heavy lifting for the form.
-	// If user passes the `scope` to the form component we capture it
-	// in the closure so we can create a layered scope. FormComponent
-	// works a bit differently from the normal components and it creates 
-	// two or three layers of scopes:
-	// 
-	// 1st layer: object holding all the meta info: current path, errors, dirtyAttributes and validations
-	// 2nd layer: if the `scope` object was passed in set it here
-	// 3rd layer: object passed in the `map` property
-	// 
-	// This ensures that context inside the form component is always set to whatever was passed in as
-	// a `map` while still being able to get all the data set in the scope
-	// 
-	// It is useful when you want to load some form data that is not directly related to a model
-	// (a list to populate the select element or something similar)
-	// 
-	// This function also handles all the stuff that is needed for nested forms. When using the FormComponent
-	// you can nest forms one inside the other, but the behavior is handled by the outermost form.
-	// 
-	// This way you can reuse forms in any needed context.
-	// 
-	var makeSetup = function(passedInScope){
+	var getScope = function(attr, context){
+		if(attr === 'this' || attr === '.'){
+			return context;
+		}
+		return context.attr ? context.attr(attr) : context[attr];
+	}
 
-		return function(el, hookupOptions){
+	
+	var FormStates = {
+		CLEAN   : 'clean',
+		SAVING  : 'saving',
+		SAVED   : 'saved',
+		INVALID : 'invalid',
+		VALID   : 'valid'
+	};
+
+	var FormScope = can.Map.extend({}, {
+		init : function(){
+			this.attr('state', FormStates.CLEAN);
+		},
+		save : function(){
+			this.attr('state', FormStates.SAVING);
+		}
+	})
+
+	var isMapThis = function(attr){
+		attr = attr.replace(/\s/g, '');
+		return (attr === '{this}' || attr === '{.}');
+	}
+
+	var blacklistedAttrs = ['map', 'path', 'errors'];
+
+	var makeScope = function(passedInScope){
+		return  function(attrs, parentScope, el){
+			var Scope, BaseScope;
+
+			parentScope.attr('__addValidation')(
+				makeValidator(attrs.map, this.validate, parentScope.attr('__path'))
+			);
+
+			delete attrs.path;
+
+			BaseScope = parentScope.attr('__form') ? FormScope : can.Map;
+
+
+			Scope = passedInScope ? BaseScope.extend(passedInScope) : BaseScope;
+
+
+			var scope = new (Scope.extend(attrs))
+
+			return scope;
+		}
+	}
+
+	var componentOpts = {
+		// Function that handles all the heavy lifting for the form.
+		// If user passes the `scope` to the form component we capture it
+		// in the closure so we can create a layered scope. FormComponent
+		// works a bit differently from the normal components and it creates 
+		// two or three layers of scopes:
+		// 
+		// 1st layer: object holding all the meta info: current path, errors, dirtyAttributes and validations
+		// 2nd layer: if the `scope` object was passed in set it here
+		// 3rd layer: object passed in the `map` property
+		// 
+		// This ensures that context inside the form component is always set to whatever was passed in as
+		// a `map` while still being able to get all the data set in the scope
+		// 
+		// It is useful when you want to load some form data that is not directly related to a model
+		// (a list to populate the select element or something similar)
+		// 
+		// This function also handles all the stuff that is needed for nested forms. When using the FormComponent
+		// you can nest forms one inside the other, but the behavior is handled by the outermost form.
+		// 
+		// This way you can reuse forms in any needed context.
+	
+		setup : function(el, hookupOptions){
+
 			var scope       = hookupOptions.scope,
+				isTopLevel  = typeof hookupOptions.scope.attr("__form") === 'undefined',
 				context     = scope._context,
-				path        = getPath(el.getAttribute('path') || el.getAttribute('map')),
+				attr        = getPath(el.getAttribute('map')), 
+				path        = getPath(el.getAttribute('path') || attr),
 				parentPath  = scope.attr('__path'),
 				currentPath = parentPath ? [parentPath, path].join('.') : path,
 				opts        = {},
 				validations = [],
 				dirtyAttrs  = scope.attr('__dirtyAttrs') || [],
-				mapConstructor, passedInScopeInstance;
+				mapConstructor;
 
-			if(!scope.attr('__form')){
+			if(isTopLevel){
 				// If we are in the top level form set all the metadata needed for the form
 				opts.__form = true;
 				opts.__errors = scope.attr(getPath(el.getAttribute('errors'))) || can.compute();
@@ -121,8 +189,6 @@ define([
 				opts.__addValidation = function(rulesFn){
 					validations.push(rulesFn);
 				}
-				// Wrap the form in the `form` element
-				hookupOptions.subtemplate = wrapSubtemplateInForm(hookupOptions.subtemplate);
 				// `inMainForm` helper will render it's contents for this context
 				this.helpers.inMainForm = function(opts){
 					return opts.fn()
@@ -137,42 +203,27 @@ define([
 
 
 			// Create first scope layer - the one holding the metadata
-			if(!scope._parent){
+			if(isTopLevel){
 				hookupOptions.scope = (new can.view.Scope(opts));
 			} else {
 				hookupOptions.scope = scope._parent.add(opts);
 			}
 
-
-			// If the form was created with the `scope` option, create another data layer
-			if(passedInScope){
-				// For plain object we create an extended onstructor function and initialize it
-				if(_isPlainObject(passedInScope)){
-					mapConstructor = (this.Map || can.Map).extend({}, passedInScope);
-					passedInScopeInstance = new mapConstructor;
-				} else {
-					// Otherwise it's an instance or a constructor function
-					if(passedInScope instanceof can.Map){
-						passedInScopeInstance = passedInScope;
-					} else {
-						passedInScopeInstance = new passedInScope;
-					}
-				}
-				hookupOptions.scope = hookupOptions.scope.add(passedInScopeInstance);
-			}
-
-
-			// Finally add the context as the last layer of the scope
 			hookupOptions.scope = hookupOptions.scope.add(context);
+
+			hookupOptions.subtemplate = wrapSubtemplateInFormScope(hookupOptions.subtemplate, isTopLevel);
 
 			// When `attributes` event is triggered we check if the `path` was changed
 			// and update all places where we keep the paths of the current nested forms.
 			can.bind.call(el, "attributes", function (ev) {
-				var path, oldPath;
-				if(ev.attributeName === 'path' && opts.__path){
+				var attr = ev.attributeName,
+					path, oldPath;
+
+				if(attr === 'path' && opts.__path){
 					path = el.getAttribute('path');
 					path = parentPath ? [parentPath, path].join('.') : path;
 					oldPath = ev.oldValue;
+
 					opts.__path(path);
 
 					for(var i = 0; i < dirtyAttrs.length; i++){
@@ -180,7 +231,6 @@ define([
 							dirtyAttrs[i] = dirtyAttrs[i].replace(oldPath, path);
 						}
 					}
-
 					ev.stopImmediatePropagation();
 				}
 			});
@@ -192,26 +242,16 @@ define([
 			// If we are in the top level form, add some objects to the control instance
 			if(opts.__form){
 				this._control.__form       = opts.__form;
-				this._control.__errors     = opts.__errors;
 				this._control.__dirtyAttrs = opts.__dirtyAttrs;
+				this._control.__errors     = opts.__errors;
 				this._control.validations  = validations;
+				this._control.bindErrors(opts.__errors);
 			}
-			
-		}
-	}
 
-	var componentOpts = {
-		// Here we setup the validations and return whatever was passed in the `map` object
-		// as a scope
-		scope : function(attrs, parentScope, el){
-			parentScope.attr('__addValidation')(
-				makeValidator(attrs.map, this.validate, parentScope.attr('__path'))
-			);
-			return attrs.map;
 		},
 		// We use the control instance on the component to handle error reporting
 		events : {
-			"{scope} change" : function(scope, ev, path, how){
+			"{scope.map} change" : function(scope, ev, path, how){
 				if(this.__form){
 					if(how === 'set'){
 						if(!_contains(this.__dirtyAttrs, path)){
@@ -228,7 +268,7 @@ define([
 					var errors = this.validate(true);
 					
 					if(_isEmpty(errors)){
-
+						this.scope.save()
 					}
 
 					ev.preventDefault();
@@ -267,6 +307,12 @@ define([
 
 					return allErrors;
 				}
+			},
+			bindErrors : function(errors){
+				var self = this;
+				this.on(errors, 'change', function(ev, newVal, oldVal){
+					self.scope.attr('state', _isEmpty(newVal) ? FormStates.VALID : FormStates.INVALID);
+				});
 			}
 		},
 		// Error helper that renders the errors for the data path. It keeps track
@@ -310,16 +356,25 @@ define([
 			throw new FormComponentError("You must provide the `tag` option to the FormComponent");
 		}
 
-		return Component.extend(_merge({setup : makeSetup(passedInScope)}, componentOpts, opts));
+		return Component.extend(_merge({scope : makeScope(passedInScope)}, componentOpts, opts));
 	}
 
 	FormComponent.extend = FormComponent;
 	FormComponent.validationRules = Validator.rules;
+	FormComponent.Scope = FormScope;
 
 	// Create the simplest implementation of the FormComponent, useful for the ad-hoc forms
 	FormComponent({
 		tag:'form-for',
-		template : stache('<content></content>')
+		template : stache('<content></content>'),
+		validate : {
+			username : [Validator.rules.presenceOf()]
+		},
+		scope : {
+			aa : function(){
+				return 'lol'
+			}
+		}
 	});
 
 	return FormComponent;
