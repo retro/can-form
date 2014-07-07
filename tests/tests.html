@@ -10,6 +10,7 @@
     <script type="text/stache" id="form">
 
       <form-for map="{user}" errors="{foo}" state="{formState}">
+      {{ fooqux }}
         {{#errors}}
           <h1>there are some problems with the form</h1>
         {{/errors}}
@@ -47,7 +48,17 @@
       requirejs(['can/view/stache', 'can/map', 'can-form'], function(stache, Map, FormComponent){
          
           var view = can.view('form')
-          var userModel = Map.extend({}, {})
+
+          console.log(view)
+          var userModel = Map.extend({}, {
+            save : function(){
+              var promise = $.Deferred();
+              promise.reject({
+                'socialNetworks.0.username' : 'baaaa'
+              })
+              return promise
+            }
+          })
 
           window.foo = can.compute()
 
@@ -65,7 +76,7 @@
             }]
           })
 
-          window.formState = can.compute();
+          window.formState = can.compute('aa');
 
           formState.bind('change', function(){
             console.log(arguments)

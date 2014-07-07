@@ -1,0 +1,82 @@
+{{#errors}}
+  <div class="alert alert-danger">There are some errors in the form!</div>
+{{/errors}}
+<div class="form-group {{#errors 'username'}}has-error{{/errors}}">
+  <label for="username" class="control-label">Username</label>
+  <input type="text" class="form-control" id="username" placeholder="Enter username" can-value="username">
+  {{#errors 'username'}}
+    <ul class="bg-danger list-unstyled">
+      {{#this}}
+        <li>{{ . }}</li>
+      {{/this}}
+    </ul>
+  {{/errors}}
+</div>
+
+<div class="form-group">
+  <label class="control-label">PhoneNumbers</label>
+  <button can-click="addPhoneNumber" class="btn btn-xs">Add Phone Number</button>
+  {{#if phoneNumbers.length}}
+    <div class="panel panel-default">
+      <div class="panel-body" style="padding-bottom: 0">
+        {{#each phoneNumbers}}
+          
+          <div class="form-group {{#errors 'phoneNumbers' @index}}has-error{{/errors}}">
+            <input type="text" class="form-control" placeholder="Enter phone number" can-value="../phoneNumbers.{{ @index }}">
+            {{#errors 'phoneNumbers' @index}}
+              <ul class="bg-danger list-unstyled">
+                {{#this}}
+                  <li>{{ . }}</li>
+                {{/this}}
+              </ul>
+            {{/errors}}
+            </div>
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+  {{#errors 'phoneNumbers'}}
+    <ul class="bg-danger list-unstyled">
+      {{#this}}
+        <li>{{ . }}</li>
+      {{/this}}
+    </ul>
+  {{/errors}}
+</div>
+
+<div class="form-group">
+  <label class="control-label">Social Networks</label>
+  <button can-click="addSocialNetwork" class="btn btn-xs">Add Social Network</button>
+  {{#each socialNetworks}}
+    <form-for map="{this}" path="socialNetworks.{{ @index }}">
+      <div class="panel panel-default">
+        <div class="panel-body">
+          <div class="form-group {{#errors 'name'}}has-error{{/errors}}">
+            <label for="name" class="control-label">SocialNetwork Name</label>
+            <input type="text" class="form-control" id="name" placeholder="Enter social network name (eg. Twitter)" can-value="name">
+            {{#errors 'name'}}
+              <ul class="bg-danger list-unstyled">
+                {{#this}}
+                  <li>{{ . }}</li>
+                {{/this}}
+              </ul>
+            {{/errors}}
+          </div>
+          <div class="form-group {{#errors 'username'}}has-error{{/errors}}">
+            <label for="username" class="control-label">Username</label>
+            <input type="text" class="form-control" id="username" placeholder="Enter username" can-value="username">
+            {{#errors 'username'}}
+              <ul class="bg-danger list-unstyled">
+                {{#this}}
+                  <li>{{ . }}</li>
+                {{/this}}
+              </ul>
+            {{/errors}}
+          </div>
+        </div>
+      </div>
+    </form-for>
+  {{/each}}
+</div>
+
+<button type="submit" class="btn btn-default">Submit</button>

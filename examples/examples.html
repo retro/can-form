@@ -1,0 +1,63 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>can-form examples</title>
+    <link rel="stylesheet" href="../bower_components/bootstrap/dist/css/bootstrap.css">
+    <link rel="stylesheet" href="../bower_components/bootstrap/dist/css/bootstrap-theme.css">
+    <style>
+      #content {
+        width: 900px;
+        margin: 50px auto;
+      }
+      ul.bg-danger {
+        margin-top: 10px;
+      }
+      ul.bg-danger li {
+        padding: 5px 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <ul class="list-unstyled">
+        <li><a href="?simple-login">Simple Login Form</a></li>
+        <li><a href="?user-profile">User Profile Form</a></li>
+      </ul>
+      <hr>
+      <div id="examples"></div>
+    </div>
+    <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
+    <script type='text/javascript' src='../requirejsconfig.js'></script>
+    <script type='text/javascript'>
+      requirejs.config({
+        baseUrl : '../'
+      })
+      requirejs(['can/model', 'examples/forms/simple_login', 'examples/forms/user_profile'], function(Model){
+        var page = window.location.search.split('?').pop();
+
+        if(page === 'simple-login'){
+          !function(){
+            var UserModel = Model.extend({}, {});
+
+            $('#examples').html(can.stache('<simple-login map="{user}"></simple-login>')({
+              user : new UserModel
+            }))
+          }()
+        }
+
+        if(page === 'user-profile'){
+          !function(){
+            var UserModel = Model.extend({}, {});
+
+            $('#examples').html(can.stache('<user-profile map="{user}"></user-profile>')({
+              user : new UserModel
+            }))
+          }()
+        }
+
+
+        
+      })
+    </script>
+  </body>
+</html>
