@@ -1,7 +1,7 @@
 define([
-'can/construct',
-'can/component',
-'can/view/stache',
+'can/construct/',
+'can/component/',
+'can/view/stache/',
 'lib/validator',
 'lodash/objects/merge',
 'lodash/objects/transform',
@@ -13,8 +13,8 @@ define([
 'lodash/collections/forEach',
 'lodash/collections/contains',
 'lodash/arrays/compact',
-'can/construct/super',
-'can/construct/proxy'
+'can/construct/super/',
+'can/construct/proxy/'
 ], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isEmpty, _isPlainObject, _keys, _map, _each, _contains, _compact){
 
 	// Custom FormComponent Error object

@@ -1,4 +1,4 @@
-define(['can-form', 'stache!//examples/forms/simple_login'], function(FormComponent, initView){
+define(['can-form', './simple_login.stache!'], function(FormComponent, initView){
 
 	FormComponent.extend({
 		tag : 'simple-login',

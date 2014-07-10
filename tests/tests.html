@@ -5,8 +5,7 @@
   </head>
   <body>
     <div id="content"></div>
-    <script type='text/javascript' src='../bower_components/requirejs/require.js'></script>
-    <script type='text/javascript' src='../requirejsconfig.js'></script>
+    <script type='text/javascript' src='../bower_components/steal/steal.js'></script>
     <script type="text/stache" id="form">
 
       <form-for map="{user}" errors="{foo}" state="{formState}">
@@ -42,10 +41,7 @@
       </form-for>
     </script>
     <script type='text/javascript'>
-      requirejs.config({
-        baseUrl : '../'
-      })
-      requirejs(['can/view/stache', 'can/map', 'can-form'], function(stache, Map, FormComponent){
+      steal('can/view/stache', 'can/map', 'can-form.js', function(stache, Map, FormComponent){
          
           var view = can.view('form')
 

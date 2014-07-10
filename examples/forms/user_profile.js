@@ -1,4 +1,4 @@
-define(['can-form', 'stache!//examples/forms/user_profile'], function(FormComponent, initView){
+define(['can-form', './user_profile.stache!'], function(FormComponent, initView){
 
 	var phoneRe = /\(?([0-9]{3})\)?([ .-]?)([0-9]{3})\2([0-9]{4})/;
 
