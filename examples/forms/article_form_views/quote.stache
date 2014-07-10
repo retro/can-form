@@ -1,0 +1,22 @@
+<div class="form-group {{#errors 'quote'}}has-error{{/errors}}">
+  <label for="username" class="control-label">Quote</label>
+  <textarea class="form-control" id="username" placeholder="Enter quote" can-value="quote"></textarea>
+  {{#errors 'quote'}}
+    <ul class="bg-danger list-unstyled">
+      {{#this}}
+        <li>{{ . }}</li>
+      {{/this}}
+    </ul>
+  {{/errors}}
+</div>
+<div class="form-group {{#errors 'author'}}has-error{{/errors}}">
+  <label for="author" class="control-label">Author</label>
+  <input type="text" class="form-control" id="author" placeholder="Enter author" can-value="author">
+  {{#errors 'author'}}
+    <ul class="bg-danger list-unstyled">
+      {{#this}}
+        <li>{{ . }}</li>
+      {{/this}}
+    </ul>
+  {{/errors}}
+</div>

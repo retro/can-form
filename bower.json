@@ -22,11 +22,12 @@
   ],
   "dependencies": {
     "canjs": "git://github.com/bitovi/canjs.git#017d8aed847dc69e7abaae1bd3edb274c13cb89d",
-    "steal" : "0.2.2",
+    "steal": "0.2.2",
     "jquery": "~2.1.1",
     "lodash-amd": "~2.4.1"
   },
   "devDependencies": {
-    "bootstrap": "~3.2.0"
+    "bootstrap": "~3.2.0",
+    "jqueryui": "~1.11.0"
   }
 }

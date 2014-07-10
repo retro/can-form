@@ -33,6 +33,7 @@
 			"jquery": "bower_components/jquery/dist/jquery.js",
 			"can/*": "bower_components/canjs/*.js",
 			"lodash/*": "bower_components/lodash-amd/modern/*.js",
+			"ui/*": "bower_components/jqueryui/ui/*.js",
 			"bootstrap" : "bower_components/bootstrap/dist/js/bootstrap.js",
 			"bootstrap.css" : "bower_components/bootstrap/dist/css/bootstrap.csscss"
 		},
@@ -41,9 +42,9 @@
 				exports: "jQuery",
 				deps: supportsUnknownElements ? undefined : ["can/lib/html5shiv.js"]
 			},
-			"ui/core": {deps: ["jquery","theme/core.css!","theme/theme.css!"]},
+			"ui/core": {deps: ["jquery"]},
 			"ui/widget": {deps: ["jquery"]},
-			"ui/accordion": {deps: ["ui/core","ui/widget","theme/accordion.css!"]}
+			"ui/accordion": {deps: ["ui/core","ui/widget"]}
 		},
 		ext: {
 			ejs: "can/view/ejs/system",

@@ -1,6 +1,7 @@
 {{#errors}}
   <div class="alert alert-danger">There are some errors in the form!</div>
 {{/errors}}
+
 <div class="form-group {{#errors 'username'}}has-error{{/errors}}">
   <label for="username" class="control-label">Username</label>
   <input type="text" class="form-control" id="username" placeholder="Enter username" can-value="username">
@@ -20,7 +21,6 @@
     <div class="panel panel-default">
       <div class="panel-body" style="padding-bottom: 0">
         {{#each phoneNumbers}}
-          
           <div class="form-group {{#errors 'phoneNumbers' @index}}has-error{{/errors}}">
             <input type="text" class="form-control" placeholder="Enter phone number" can-value="../phoneNumbers.{{ @index }}">
             {{#errors 'phoneNumbers' @index}}
@@ -48,6 +48,7 @@
   <label class="control-label">Social Networks</label>
   <button can-click="addSocialNetwork" class="btn btn-xs">Add Social Network</button>
   {{#each socialNetworks}}
+
     <form-for map="{this}" path="socialNetworks.{{ @index }}">
       <div class="panel panel-default">
         <div class="panel-body">
@@ -76,6 +77,7 @@
         </div>
       </div>
     </form-for>
+
   {{/each}}
 </div>
 

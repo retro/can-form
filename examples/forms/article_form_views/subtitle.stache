@@ -1,0 +1,11 @@
+<div class="form-group {{#errors 'content'}}has-error{{/errors}}">
+  <label for="content" class="control-label">Subtitle</label>
+  <input type="text" class="form-control" placeholder="Enter content" can-value="content">
+  {{#errors 'content'}}
+    <ul class="bg-danger list-unstyled">
+      {{#this}}
+        <li>{{ . }}</li>
+      {{/this}}
+    </ul>
+  {{/errors}}
+</div>

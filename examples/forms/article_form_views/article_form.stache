@@ -1,0 +1,33 @@
+<div class="btn-group" style="margin-bottom: 20px;">
+  <button type="button" class="btn btn-default" can-click="addPara">Add Paragraph</button>
+  <button type="button" class="btn btn-default" can-click="addQuote">Add Quote</button>
+  <button type="button" class="btn btn-default" can-click="addSubtitle">Add Subtitle</button>
+</div>
+
+<div class="parts">
+	{{#each parts}}
+
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				{{ type }}
+				<button class="btn btn-xs btn-danger pull-right" can-click="removePart">Remove</button>
+			</div>
+			<div class="panel-body">
+				{{{renderFormPart this}}}
+			</div>
+		</div>
+
+	{{/each}}
+</div>
+
+{{#errors 'parts'}}
+	<ul class="bg-danger list-unstyled">
+		{{#this}}
+			<li>{{ . }}</li>
+		{{/this}}
+	</ul>
+{{/errors}}
+
+<hr>
+
+<button type="submit" class="btn btn-default">Submit</button>

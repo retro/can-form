@@ -22,13 +22,14 @@
       <ul class="list-unstyled">
         <li><a href="?simple-login">Simple Login Form</a></li>
         <li><a href="?user-profile">User Profile Form</a></li>
+        <li><a href="article-from">Article Form</a></li>
       </ul>
       <hr>
       <div id="examples"></div>
     </div>
     <script type='text/javascript' src='../bower_components/steal/steal.js'></script>
     <script type='text/javascript'>
-      steal('can/model', 'examples/forms/simple_login.js', 'examples/forms/user_profile.js', function(Model){
+      steal('can/model', 'examples/forms/simple_login.js', 'examples/forms/user_profile.js', 'examples/forms/article_form.js', function(Model){
         var page = window.location.search.split('?').pop();
 
         if(page === 'simple-login'){
@@ -47,6 +48,20 @@
 
             $('#examples').html(can.stache('<user-profile map="{user}"></user-profile>')({
               user : new UserModel
+            }))
+          }()
+        }
+
+        if(page === 'article-form'){
+          !function(){
+            var ArticleFormModel = Model.extend({}, {
+              init : function(){
+                this.attr('parts', [])
+              }
+            });
+
+            $('#examples').html(can.stache('<article-form map="{articleForm}"></article-form>')({
+              articleForm : new ArticleFormModel
             }))
           }()
         }

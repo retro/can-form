@@ -12,10 +12,11 @@ define([
 'lodash/collections/map',
 'lodash/collections/forEach',
 'lodash/collections/contains',
+'lodash/collections/filter',
 'lodash/arrays/compact',
 'can/construct/super/',
 'can/construct/proxy/'
-], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isEmpty, _isPlainObject, _keys, _map, _each, _contains, _compact){
+], function(Construct, Component, stache, Validator, _merge, _transform, _isArray, _isEmpty, _isPlainObject, _keys, _map, _each, _contains, _filter, _compact){
 
 	// Custom FormComponent Error object
 	var FormComponentError = function (message){
@@ -144,11 +145,10 @@ define([
 
 	var makeScope = function(passedInScope){
 		return  function(attrs, parentScope, el){
-			var Scope, BaseScope;
+			var scopeValidator = makeValidator(attrs.map, this.validate, parentScope.attr('__path')),
+				validations, Scope, BaseScope;
 
-			parentScope.attr('__addValidation')(
-				makeValidator(attrs.map, this.validate, parentScope.attr('__path'))
-			);
+			validations = parentScope.attr('__addValidation')(scopeValidator);
 
 			delete attrs.path;
 
@@ -159,6 +159,10 @@ define([
 
 
 			var scope = new (Scope.extend(attrs));
+
+			scope.__removeValidator = function(){
+				validations.splice(validations.indexOf(scopeValidator), 1);
+			}
 
 			return scope;
 		}
@@ -188,6 +192,7 @@ define([
 				opts.__dirtyAttrs = dirtyAttrs;
 				opts.__addValidation = function(rulesFn){
 					validations.push(rulesFn);
+					return validations;
 				}
 				// `inMainForm` helper will render it's contents for this context
 				this.helpers.inMainForm = function(opts){
@@ -255,13 +260,42 @@ define([
 		// We use the control instance on the component to handle error reporting
 		events : {
 			"{scope.map} change" : function(scope, ev, path, how){
+				var self = this,
+					oldDirty, dirty;
 				if(this.__form){
+					this.__lastBatchNum = ev.batchNum;
 					if(how === 'set'){
 						if(!_contains(this.__dirtyAttrs, path)){
 							this.__dirtyAttrs.push(path);
 						}
 					}
-					clearTimeout(this.__validationTimeout);
+					if(how === 'remove'){
+
+						oldDirty =  _filter(this.__dirtyAttrs, function(d){
+							return path === d.substr(0, path.length);
+						});
+
+						dirty = _filter(this.__dirtyAttrs, function(d){
+							return path !== d.substr(0, path.length);
+						});
+
+						this.__dirtyAttrs.splice(0, this.__dirtyAttrs.length);
+						this.__dirtyAttrs.push.apply(this.__dirtyAttrs, dirty);
+
+						this.__oldPath = path;
+						this.__oldDirty = oldDirty;
+					}
+					
+					if(how === 'add' && ev.batchNum === this.__lastBatchNum && this.__oldPath){
+						dirty = _map(this.__oldDirty, function(d){
+							return d.replace(self.__oldPath, path);
+						})
+						setTimeout(function(){
+							self.__dirtyAttrs.push.apply(self.__dirtyAttrs, dirty);
+							delete self.__oldPath;
+						})
+					}
+
 					this.__validationTimeout = setTimeout(this.proxy('validate'), 1);
 				}
 			},
@@ -297,6 +331,7 @@ define([
 						}
 					});
 
+
 					if(this.__formWasSubmitted){
 						_each(_keys(allErrors), function(path){
 							if(!_contains(self.__dirtyAttrs, path)){
@@ -305,7 +340,7 @@ define([
 						});
 						delete this.__formWasSubmitted;
 					}
-
+					
 					this.__errors(allErrors);
 
 					return allErrors;
@@ -316,6 +351,10 @@ define([
 				this.on(errors, 'change', function(ev, newVal, oldVal){
 					self.scope.attr('state', _isEmpty(newVal) ? FormStates.VALID : FormStates.INVALID);
 				});
+			},
+			destroy : function(){
+				this.scope.__removeValidator();
+				this._super.apply(this, arguments);
 			}
 		},
 		// Error helper that renders the errors for the data path. It keeps track
