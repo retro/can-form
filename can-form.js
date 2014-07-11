@@ -189,6 +189,7 @@ define([
 	var __evCounter = 1;
 	var __dirtyTrackerTimeouts = {};
 	var __dirtyTrackers        = {};
+	var __dirtyTrackersCleanup = {};
 
 	var makeScope = function(passedInScope){
 		return  function(attrs, parentScope, el){
@@ -203,6 +204,8 @@ define([
 			}
 
 			dirtyTracker = __dirtyTrackers[attrs.map._cid];
+
+			clearTimeout(__dirtyTrackersCleanup[attrs.map._cid]);
 
 			validations = parentScope.attr('__addValidation')(scopeValidator);
 			dirtyAttrTrackers = parentScope.attr('__addDirtyAttrTracker')(__dirtyTrackers[attrs.map._cid]);
@@ -221,6 +224,11 @@ define([
 			scope.__removeValidatorAndDirtyAttrTracker = function(){
 				validations.splice(validations.indexOf(scopeValidator), 1);
 				dirtyAttrTrackers.splice(dirtyAttrTrackers.indexOf(dirtyTracker), 1);
+
+				__dirtyTrackersCleanup[attrs.map._cid] = setTimeout(function(){
+					delete __dirtyTrackers[attrs.map._cid];
+				}, 1);
+
 			}
 
 			return scope;
@@ -328,10 +336,11 @@ define([
 					}
 
 					clearTimeout(__dirtyTrackerTimeouts[ev.__evNum]);
+					
 					__dirtyTrackerTimeouts[ev.__evNum] = setTimeout(function(){
 						self.scope.__dirtyAttrTracker(path);
 						delete __dirtyTrackerTimeouts[ev.__evNum];
-						setTimeout(ev.__validate, 1);
+						self.__validationTimeout = setTimeout(ev.__validate, 1);
 					}, 1);
 				} else if(this.__form){
 					this.__validationTimeout = setTimeout(this.proxy('validate'), 1);
