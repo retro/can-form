@@ -25,19 +25,27 @@
         <li><a href="?article-form">Article Form</a></li>
       </ul>
       <hr>
+      <div class="state-wrap">Form state: <b class="state"></b></div>
+      <hr>
       <div id="examples"></div>
     </div>
     <script type='text/javascript' src='../bower_components/steal/steal.js'></script>
     <script type='text/javascript'>
       steal('can/model', 'examples/forms/simple_login.js', 'examples/forms/user_profile.js', 'examples/forms/article_form.js', function(Model){
         var page = window.location.search.split('?').pop();
+        var state = can.compute();
+
+        state.bind('change', function(ev, val){
+          $('.state').html(val);
+        })
 
         if(page === 'simple-login'){
           !function(){
             var UserModel = Model.extend({}, {});
 
-            $('#examples').html(can.stache('<simple-login map="{user}"></simple-login>')({
-              user : new UserModel
+            $('#examples').html(can.stache('<simple-login map="{user}" state="{state}"></simple-login>')({
+              user : new UserModel,
+              state : state
             }))
           }()
         }
@@ -46,8 +54,9 @@
           !function(){
             var UserModel = Model.extend({}, {});
 
-            $('#examples').html(can.stache('<user-profile map="{user}"></user-profile>')({
-              user : new UserModel
+            $('#examples').html(can.stache('<user-profile map="{user}" state="{state}"></user-profile>')({
+              user : new UserModel,
+              state : state
             }))
           }()
         }
@@ -60,8 +69,9 @@
               }
             });
 
-            $('#examples').html(can.stache('<article-form map="{articleForm}"></article-form>')({
-              articleForm : new ArticleFormModel
+            $('#examples').html(can.stache('<article-form map="{article}" state="{state}"></article-form>')({
+              article : new ArticleFormModel,
+              state : state
             }))
           }()
         }
