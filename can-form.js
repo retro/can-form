@@ -121,7 +121,6 @@ define([
 			var promise;
 			this.attr('state', FormStates.SAVING);
 			promise = this.attr('map').save();
-			console.log(promise)
 			promise.then(this.proxy('saved'), this.proxy('errored'));
 		},
 		saved : function(data){
@@ -143,12 +142,70 @@ define([
 
 	var blacklistedAttrs = ['map', 'path', 'errors'];
 
+	var makeDirtyAttrTracker = function(path, dirty){
+		var fn = function(attr, allKeys){
+			var realPath = can.isFunction(path) ? path() : path;
+
+			if(arguments.length === 0){
+				return !realPath ? dirty : _map(dirty, function(d){
+					return [realPath, d].join('.');
+				});
+			}
+
+			if(!_isArray(attr)){
+				attr = [attr];
+			}
+
+			realPath = realPath ? realPath + "." : "";
+
+			_each(attr, function(d, i){
+				
+				if(allKeys){
+					if(d && d.indexOf(realPath) === 0){
+						d = d.replace(realPath, "");
+						if(!_contains(dirty, d)){
+							attr[i] = false;
+							dirty.push(d);
+						}
+					}
+				} else {
+					if(!_contains(dirty, d)){
+						dirty.push(d);
+					}
+				}
+			});
+
+			return attr;
+
+		}
+
+		dirty = dirty || [];
+
+		fn.dirty = dirty;
+
+		return fn;
+	}
+
+	var __evCounter = 1;
+	var __dirtyTrackerTimeouts = {};
+	var __dirtyTrackers        = {};
+
 	var makeScope = function(passedInScope){
 		return  function(attrs, parentScope, el){
-			var scopeValidator = makeValidator(attrs.map, this.validate, parentScope.attr('__path')),
-				validations, Scope, BaseScope;
+			var path =  parentScope.attr('__path'),
+				scopeValidator = makeValidator(attrs.map, this.validate, path),
+				validations, dirtyTracker, dirtyAttrTrackers, Scope, BaseScope;
+
+			if(!__dirtyTrackers[attrs.map._cid]){
+				__dirtyTrackers[attrs.map._cid] = makeDirtyAttrTracker(path);
+			} else {
+				__dirtyTrackers[attrs.map._cid] = makeDirtyAttrTracker(path, __dirtyTrackers[attrs.map._cid].dirty);
+			}
+
+			dirtyTracker = __dirtyTrackers[attrs.map._cid];
 
 			validations = parentScope.attr('__addValidation')(scopeValidator);
+			dirtyAttrTrackers = parentScope.attr('__addDirtyAttrTracker')(__dirtyTrackers[attrs.map._cid]);
 
 			delete attrs.path;
 
@@ -157,11 +214,13 @@ define([
 
 			Scope = passedInScope ? BaseScope.extend(passedInScope) : BaseScope;
 
-
 			var scope = new (Scope.extend(attrs));
 
-			scope.__removeValidator = function(){
+			scope.__dirtyAttrTracker = __dirtyTrackers[attrs.map._cid];
+
+			scope.__removeValidatorAndDirtyAttrTracker = function(){
 				validations.splice(validations.indexOf(scopeValidator), 1);
+				dirtyAttrTrackers.splice(dirtyAttrTrackers.indexOf(dirtyTracker), 1);
 			}
 
 			return scope;
@@ -180,7 +239,7 @@ define([
 				currentPath = parentPath ? [parentPath, path].join('.') : path,
 				opts        = {},
 				validations = [],
-				dirtyAttrs  = scope.attr('__dirtyAttrs') || [],
+				dirtyAttrs  = [],
 				mapConstructor;
 
 			var s = hookupOptions.subtemplate
@@ -189,10 +248,13 @@ define([
 				// If we are in the top level form set all the metadata needed for the form
 				opts.__form = true;
 				opts.__errors = scope.attr(getPath(el.getAttribute('errors'))) || can.compute();
-				opts.__dirtyAttrs = dirtyAttrs;
 				opts.__addValidation = function(rulesFn){
 					validations.push(rulesFn);
 					return validations;
+				}
+				opts.__addDirtyAttrTracker = function(fn){
+					dirtyAttrs.push(fn);
+					return dirtyAttrs;
 				}
 				// `inMainForm` helper will render it's contents for this context
 				this.helpers.inMainForm = function(opts){
@@ -220,6 +282,8 @@ define([
 			// When `attributes` event is triggered we check if the `path` was changed
 			// and update all places where we keep the paths of the current nested forms.
 			can.bind.call(el, "attributes", function (ev) {
+
+				
 				var attr = ev.attributeName,
 					path, oldPath;
 
@@ -230,11 +294,6 @@ define([
 
 					opts.__path(path);
 
-					for(var i = 0; i < dirtyAttrs.length; i++){
-						if(dirtyAttrs[i].indexOf(oldPath) === 0){
-							dirtyAttrs[i] = dirtyAttrs[i].replace(oldPath, path);
-						}
-					}
 					ev.stopImmediatePropagation();
 				}
 			});
@@ -245,10 +304,10 @@ define([
 
 			// If we are in the top level form, add some objects to the control instance
 			if(opts.__form){
-				this._control.__form       = opts.__form;
-				this._control.__dirtyAttrs = opts.__dirtyAttrs;
-				this._control.__errors     = opts.__errors;
-				this._control.validations  = validations;
+				this._control.__form      = opts.__form;
+				this._control.__errors    = opts.__errors;
+				this._control.validations = validations;
+				this._control.dirtyAttrs  = dirtyAttrs;
 				this._control.bindErrors(opts.__errors);
 				this._control.scope.attr('state', FormStates.CLEAN);
 				this._control.scope.setErrors = function(errors){
@@ -260,42 +319,21 @@ define([
 		// We use the control instance on the component to handle error reporting
 		events : {
 			"{scope.map} change" : function(scope, ev, path, how){
-				var self = this,
-					oldDirty, dirty;
-				if(this.__form){
-					this.__lastBatchNum = ev.batchNum;
-					if(how === 'set'){
-						if(!_contains(this.__dirtyAttrs, path)){
-							this.__dirtyAttrs.push(path);
-						}
-					}
-					if(how === 'remove'){
+				var self = this;
 
-						oldDirty =  _filter(this.__dirtyAttrs, function(d){
-							return path === d.substr(0, path.length);
-						});
-
-						dirty = _filter(this.__dirtyAttrs, function(d){
-							return path !== d.substr(0, path.length);
-						});
-
-						this.__dirtyAttrs.splice(0, this.__dirtyAttrs.length);
-						this.__dirtyAttrs.push.apply(this.__dirtyAttrs, dirty);
-
-						this.__oldPath = path;
-						this.__oldDirty = oldDirty;
-					}
-					
-					if(how === 'add' && ev.batchNum === this.__lastBatchNum && this.__oldPath){
-						dirty = _map(this.__oldDirty, function(d){
-							return d.replace(self.__oldPath, path);
-						})
-						setTimeout(function(){
-							self.__dirtyAttrs.push.apply(self.__dirtyAttrs, dirty);
-							delete self.__oldPath;
-						})
+				if(how === 'set'){
+					if(!ev.__evNum){
+						ev.__evNum = __evCounter++;
+						ev.__validate = this.proxy('validate');
 					}
 
+					clearTimeout(__dirtyTrackerTimeouts[ev.__evNum]);
+					__dirtyTrackerTimeouts[ev.__evNum] = setTimeout(function(){
+						self.scope.__dirtyAttrTracker(path);
+						delete __dirtyTrackerTimeouts[ev.__evNum];
+						setTimeout(ev.__validate, 1);
+					}, 1);
+				} else if(this.__form){
 					this.__validationTimeout = setTimeout(this.proxy('validate'), 1);
 				}
 			},
@@ -314,13 +352,15 @@ define([
 			validate : function(validateAll){
 				if(this.__form){
 					var allErrors = {},
-					self = this;
+						dirtyAttrs = can.map(this.dirtyAttrs, function(fn){ return fn() }),
+						self = this,
+						allKeys;
 
 					_each(this.validations, function(fn){
 						var errors = fn();
 						if(errors && !_isEmpty(errors)){
 							_each(errors, function(error, key){
-								if(validateAll || _contains(self.__dirtyAttrs, key)){
+								if(validateAll || _contains(dirtyAttrs, key)){
 									if(allErrors[key]){
 										allErrors[key].push.apply(allErrors[key], error);
 									} else {
@@ -331,16 +371,15 @@ define([
 						}
 					});
 
+					allKeys = _keys(allErrors);
 
 					if(this.__formWasSubmitted){
-						_each(_keys(allErrors), function(path){
-							if(!_contains(self.__dirtyAttrs, path)){
-								self.__dirtyAttrs.push(path);
-							}
-						});
 						delete this.__formWasSubmitted;
+						can.map(this.dirtyAttrs.reverse(), function(fn){
+							allKeys = fn(allKeys, true);
+						})
 					}
-					
+
 					this.__errors(allErrors);
 
 					return allErrors;
@@ -353,7 +392,7 @@ define([
 				});
 			},
 			destroy : function(){
-				this.scope.__removeValidator();
+				this.scope.__removeValidatorAndDirtyAttrTracker();
 				this._super.apply(this, arguments);
 			}
 		},
