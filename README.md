@@ -1,4 +1,183 @@
-can-form
-========
+# can-form
 
-Form Library for CanJS
+Can-Form is a form component for the CanJS framework. It takes care of the form validation and error reporting while allowing you to do things the "CanJS way".
+
+Notable features:
+
+- Form based validations (with support for nested objects)
+- Composable / nestable form
+- Error reporting
+- Intelligent validation management - validates only the fields that user changed, or all of them if the form is submitted
+- Behaves like a real form (pressing enter in the input field will submit the form)
+- Behaves like a Component (can.Component)
+
+## Form based validations 
+
+You can add validations to the form component by using the `validate` property:
+
+    FormComponent.extend({
+        tag : 'simple-form',
+        template : '<content><content>',
+        validate : {
+            username : [FormComponent.validationRules.presenceOf()],
+            password : [FormComponent.validationRules.presenceOf()]
+        }
+    });
+
+This is a simple form example, that validates presence of `username` and `password` attributes.
+
+You initialize it like this:
+
+    <simple-form map="{userModel}">
+        <input type="text" can-value="username">
+        <input type="text" can-value="password">
+        <button>Submit</button>
+    </simple-form>
+
+Context inside the form template will be set to whatever was passed in the `map` attribute of the form tag.
+
+Form will automatically wrap your content in the `form` element so you shouldn't include it yourself.
+
+Although the data will be validated, the errors will not be show. To show the errors, use the `errors` helper:
+
+    <simple-form map="{userModel}">
+        <input type="text" can-value="username">
+        {{#errors 'username'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+        <input type="text" can-value="password">
+        {{#errors 'password'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+        <button>Submit</button>
+    </simple-form>
+
+Now the errors will be shown whenever the user changes the input or submits the form.
+
+## Composable / nestable forms
+
+When you have a nested data structure it can be tricky to keep track of your fields and errors - modelling the form after your data can be a pain.
+
+can-form allows you to nest the form components one inside another. Let's say that you want add ability for your users to add their social network accounts in the form.
+
+can-form comes with the default form component called `form-for` that can be used for cases like this:
+
+    <simple-form map="{userModel}">
+        <input type="text" can-value="username">
+        {{#errors 'username'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+        <input type="text" can-value="password">
+        {{#errors 'password'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+
+        {{#each socialNetworks}}
+            <form-for map="{this}" path="socialNetworks.{{@index}}">
+                <input type="text" can-value="network">
+                // error reporting code here
+                <input type="text" can-value="username">
+                // error reporting code here
+            </form-for>
+        {{/each}}
+        <button>Submit</button>
+    </simple-form>
+
+This might look a bit confusing at first so let me explain what happens here:
+
+- we itereate through all elements in the `socialNetworks` array
+- we create a new `form-for` element for each item in the array
+- we use the `path` attribute to hint what is the path from the parent context, this is needed for the error reporting and validations
+- finally we have our inputs, but these inputs include only the name of the attribute in the current context - this makes forms reusable
+
+If we wanted to validate the `socialNetworks` array we can add the following to our component constructor:
+
+    FormComponent.extend({
+        tag : 'simple-form',
+        template : '<content><content>',
+        validate : {
+            username : [FormComponent.validationRules.presenceOf()],
+            password : [FormComponent.validationRules.presenceOf()],
+            'socialNetworks.*.username' : [FormComponent.validationRules.presenceOf()],
+            'socialNetworks.*.network' : [FormComponent.validationRules.presenceOf()]
+        }
+    });
+
+When you use the `socialNetworks.*.network` syntax it sets up the validation for the `network` property of each item in the `socialNetworks` array (This syntax is based on the path syntax generated by the can.Map events);
+
+### Alternate approach
+
+If we wanted to reuse the form component for the social network map, we could create it's own component:
+
+    FormComponent.extend({
+        tag : 'social-network',
+        template : socialNetworkTemplate,
+        validate : {
+            username : [FormComponent.validationRules.presenceOf()],
+            network : [FormComponent.validationRules.presenceOf()]
+        }
+    })
+
+For the view we can just use the following code:
+
+    <input type="text" can-value="network">
+    {{#errors 'network'}}
+        <ul class="bg-danger list-unstyled">
+            {{#this}}
+                <li>{{ . }}</li>
+            {{/this}}
+        </ul>
+    {{/errors}}
+    <input type="text" can-value="username">
+    {{#errors 'username'}}
+        <ul class="bg-danger list-unstyled">
+            {{#this}}
+                <li>{{ . }}</li>
+            {{/this}}
+        </ul>
+    {{/errors}}
+
+Now we can include the `social-network` component inside the `simple-form`:
+
+    <simple-form map="{userModel}">
+        <input type="text" can-value="username">
+        {{#errors 'username'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+        <input type="text" can-value="password">
+        {{#errors 'password'}}
+            <ul class="bg-danger list-unstyled">
+                {{#this}}
+                    <li>{{ . }}</li>
+                {{/this}}
+            </ul>
+        {{/errors}}
+
+        {{#each socialNetworks}}
+            <social-network map="{this}" path="socialNetworks.{{@index}}">
+            </social-network>
+        {{/each}}
+        <button>Submit</button>
+    </simple-form>
+
+This approach allows you to reuse forms across different context while keeping the same validations and behavior.
