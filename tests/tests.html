@@ -2,87 +2,29 @@
 <html lang="en">
   <head>
     <title>can-form tests</title>
+    <link rel="stylesheet" href="../bower_components/qunit/qunit/qunit.css">
+    <style type="text/css">
+      #blanket-main { 
+        font-size: 12px !important;
+      }
+    </style>
   </head>
   <body>
-    <div id="content"></div>
+    <div id="qunit"></div>
+    <div id="qunit-test-area"></div>
     <script type='text/javascript' src='../bower_components/steal/steal.js'></script>
-    <script type="text/stache" id="form">
-
-      <form-for map="{user}" errors="{foo}" state="{formState}">
-      {{ fooqux }}
-        {{#errors}}
-          <h1>there are some problems with the form</h1>
-        {{/errors}}
-        Foo bar {{ username }}
-        <input type="text" can-value="username">
-        {{#errors username}}{{/errors}}
-        <form-for map="{address}">
-          <input type="text" can-value="street">
-        </form-for>
-        {{#each socialNetworks}}
-          <hr>
-          <form-for map="{this}" path="socialNetworks.{{@index}}">
-            <input can-value="name">
-            <input can-value="username">
-            {{#errors 'username'}}
-              <ul>
-                {{#this}}
-                  <li>{{ . }}</li>
-                {{/this}}
-              </ul>
-            {{/errors}}
-            {{#inMainForm}}
-              <button type="submit">Submit</button>
-            {{/inMainForm}}
-          </form-for>
-        {{/each}}
-        <br>
-        <button type="submit">Bar</button>
-      </form-for>
-    </script>
+    <script type='text/javascript' src='../bower_components/qunit/qunit/qunit.js'></script>
+    <script type='text/javascript' src='../bower_components/jquery/dist/jquery.js'></script>
+    <script type='text/javascript' src='../bower_components/funcunit/dist/funcunit.js'></script>
     <script type='text/javascript'>
-      steal('can/view/stache', 'can/map', 'can-form.js', function(stache, Map, FormComponent){
-         
-          var view = can.view('form')
-
-          console.log(view)
-          var userModel = Map.extend({}, {
-            save : function(){
-              var promise = $.Deferred();
-              promise.reject({
-                'socialNetworks.0.username' : 'baaaa'
-              })
-              return promise
-            }
-          })
-
-          window.foo = can.compute()
-
-          window.user = new userModel({
-            username: 'foobar',
-            address : {
-              street : 'Prijedorska'
-            },
-            socialNetworks : [{
-              name : 'twitter',
-              username : 'mihaelkonjevic'
-            }, {
-              name : 'github',
-              username : 'retro'
-            }]
-          })
-
-          window.formState = can.compute('aa');
-
-          formState.bind('change', function(){
-            console.log(arguments)
-          })
-
-          $('#content').html(view({
-            user : user,
-            foo : foo,
-            formState : formState
-          }))
+      QUnit.config.autostart = false;
+      QUnit.config.reorder = false;
+      steal('tests/simple_form_test.js', 'tests/profile_test.js', 'tests/complex_test.js', 'tests/validator_test.js', function(){
+        for(var i = 0; i < arguments.length; i++){
+          arguments[i](QUnit);
+        }
+        QUnit.load();
+        QUnit.start();
       })
     </script>
   </body>

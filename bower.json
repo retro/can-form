@@ -24,10 +24,16 @@
     "canjs": "git://github.com/bitovi/canjs.git#017d8aed847dc69e7abaae1bd3edb274c13cb89d",
     "steal": "0.2.2",
     "jquery": "~2.1.1",
-    "lodash-amd": "~2.4.1"
+    "lodash-amd": "~2.4.1",
+    "qunit": "~1.14.0",
+    "blanket": "~1.1.5",
+    "funcunit": "~2.0.4"
   },
   "devDependencies": {
     "bootstrap": "~3.2.0",
     "jqueryui": "~1.11.0"
+  },
+  "resolutions": {
+    "jquery": "~2.1.1"
   }
 }

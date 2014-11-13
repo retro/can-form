@@ -13,8 +13,8 @@
   {{/errors}}
 </div>
 <div class="form-group {{#errors 'password'}}has-error{{/errors}}">
-  <label for="password" class="control-label">Password</label>
-  <input type="password" class="form-control" id="password" placeholder="Password" can-value="password">
+  <label for="password" class="conrol-label">Password</label>
+  <input class="form-control" id="password" placeholder="Password" can-value="password">
   {{#errors 'password'}}
     <ul class="bg-danger list-unstyled">
       {{#this}}
